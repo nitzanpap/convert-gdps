@@ -28,27 +28,33 @@ const data = []
 fs.createReadStream(inputFile)
   .pipe(csv())
   .on("data", (row) => {
-    const country = row[Object.keys(row)[0]]
-    const years = Object.keys(row).slice(1)
+    const country = row[Object.keys(row)[0]].trim()
+    if (!country) return // Ensure country names are preserved
 
+    const years = Object.keys(row).slice(1)
     const gdpValues = years.map((year) => {
       let value = row[year]
-      return value === "no data" || value === "" ? 0 : parseFloat(value)
+      return value === "no data" || value.trim() === "" ? 0 : parseFloat(value)
     })
 
     data.push({ country, years, gdpValues })
   })
   .on("end", () => {
+    if (data.length === 0) {
+      console.error("No valid data found in the CSV file.")
+      process.exit(1)
+    }
+
     const percentageChangeData = []
 
     data.forEach(({ country, years, gdpValues }) => {
-      const row = { country }
+      const row = { Country: country }
 
       for (let i = 1; i < gdpValues.length; i++) {
         if (gdpValues[i - 1] !== 0) {
           row[years[i]] = (((gdpValues[i] - gdpValues[i - 1]) / gdpValues[i - 1]) * 100).toFixed(4)
         } else {
-          row[years[i]] = "0"
+          row[years[i]] = gdpValues[i] === 0 ? "0.0000" : "N/A"
         }
       }
 
@@ -58,7 +64,7 @@ fs.createReadStream(inputFile)
     const csvWriter = createCsvWriter({
       path: outputFile,
       header: [
-        { id: "country", title: "Country" },
+        { id: "Country", title: "Country" },
         ...data[0].years.slice(1).map((year) => ({ id: year, title: year })),
       ],
     })
