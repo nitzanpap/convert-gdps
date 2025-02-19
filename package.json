@@ -1,0 +1,16 @@
+{
+  "name": "convert-gdps",
+  "version": "1.0.0",
+  "main": "calc-gdp-change.js",
+  "scripts": {
+    "start": "node calc-gdp-change.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "GDP data conversion tool",
+  "dependencies": {
+    "csv-parser": "^3.0.0",
+    "csv-writer": "^1.6.0"
+  }
+}
