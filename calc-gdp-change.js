@@ -25,51 +25,48 @@ const outputFile = path.join(distDir, "gdp_percentage_change.csv")
 
 const data = []
 
+// Read the CSV file and process data
 fs.createReadStream(inputFile)
   .pipe(csv())
   .on("data", (row) => {
-    const country = row[Object.keys(row)[0]].trim()
-    if (!country) return // Ensure country names are preserved
-
-    const years = Object.keys(row).slice(1)
-    const gdpValues = years.map((year) => {
-      let value = row[year]
-      return value === "no data" || value.trim() === "" ? 0 : parseFloat(value)
-    })
-
-    data.push({ country, years, gdpValues })
+    data.push(row)
   })
   .on("end", () => {
-    if (data.length === 0) {
-      console.error("No valid data found in the CSV file.")
-      process.exit(1)
-    }
+    console.log(`CSV file ${inputFile} successfully processed.`)
 
-    const percentageChangeData = []
+    // Extract headers: first key is Country, rest are year columns.
+    const headers = Object.keys(data[0])
+    const countryHeader = headers[0]
+    const yearHeaders = headers.slice(1)
 
-    data.forEach(({ country, years, gdpValues }) => {
-      const row = { Country: country }
-
-      for (let i = 1; i < gdpValues.length; i++) {
-        if (gdpValues[i - 1] !== 0) {
-          row[years[i]] = (((gdpValues[i] - gdpValues[i - 1]) / gdpValues[i - 1]) * 100).toFixed(4)
+    // Compute GDP percentage change for each row (starting from second year)
+    const outputData = data.map((row) => {
+      let outRow = {}
+      outRow[countryHeader] = row[countryHeader]
+      for (let i = 1; i < yearHeaders.length; i++) {
+        const prevYear = yearHeaders[i - 1]
+        const currYear = yearHeaders[i]
+        const prevVal = parseFloat(row[prevYear])
+        const currVal = parseFloat(row[currYear])
+        if (!isNaN(prevVal) && !isNaN(currVal) && prevVal !== 0) {
+          outRow[currYear] = (((currVal - prevVal) / prevVal) * 100).toFixed(2)
         } else {
-          row[years[i]] = gdpValues[i] === 0 ? "0.0000" : "N/A"
+          outRow[currYear] = ""
         }
       }
-
-      percentageChangeData.push(row)
+      return outRow
     })
+
+    // Create CSV header: country field and computed change fields (using current year as header).
+    const outputHeaders = [
+      { id: countryHeader, title: countryHeader },
+      ...yearHeaders.slice(1).map((year) => ({ id: year, title: year })),
+    ]
 
     const csvWriter = createCsvWriter({
       path: outputFile,
-      header: [
-        { id: "Country", title: "Country" },
-        ...data[0].years.slice(1).map((year) => ({ id: year, title: year })),
-      ],
+      header: outputHeaders,
     })
 
-    csvWriter.writeRecords(percentageChangeData).then(() => {
-      console.log("GDP percentage change file written successfully")
-    })
+    csvWriter.writeRecords(outputData).then(() => console.log(`Output written to ${outputFile}`))
   })
