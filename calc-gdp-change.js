@@ -39,28 +39,28 @@ fs.createReadStream(inputFile)
     const countryHeader = headers[0]
     const yearHeaders = headers.slice(1)
 
-    // Compute GDP percentage change for each row (starting from second year)
+    // Compute GDP percentage change while keeping original values.
     const outputData = data.map((row) => {
-      let outRow = {}
-      outRow[countryHeader] = row[countryHeader]
+      let outRow = { ...row } // keep all original column values
       for (let i = 1; i < yearHeaders.length; i++) {
         const prevYear = yearHeaders[i - 1]
         const currYear = yearHeaders[i]
         const prevVal = parseFloat(row[prevYear])
         const currVal = parseFloat(row[currYear])
+        let change = ""
         if (!isNaN(prevVal) && !isNaN(currVal) && prevVal !== 0) {
-          outRow[currYear] = (((currVal - prevVal) / prevVal) * 100).toFixed(2)
-        } else {
-          outRow[currYear] = ""
+          change = (((currVal - prevVal) / prevVal) * 100).toFixed(2)
         }
+        outRow[`${currYear}_change`] = change
       }
       return outRow
     })
 
-    // Create CSV header: country field and computed change fields (using current year as header).
+    // Create CSV header: original columns + computed change columns.
     const outputHeaders = [
       { id: countryHeader, title: countryHeader },
-      ...yearHeaders.slice(1).map((year) => ({ id: year, title: year })),
+      ...yearHeaders.map((year) => ({ id: year, title: year })),
+      ...yearHeaders.slice(1).map((year) => ({ id: `${year}_change`, title: `${year}_change` })),
     ]
 
     const csvWriter = createCsvWriter({
